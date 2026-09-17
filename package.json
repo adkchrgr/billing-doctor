@@ -9,6 +9,7 @@
   "scripts": {
     "doctor": "tsx src/cli.ts",
     "mcp": "tsx src/mcp-server.ts",
+    "fake-metronome": "tsx src/fake-server.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts"
   },

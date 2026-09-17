@@ -1,0 +1,2 @@
+metronome-sdk>=4.11,<5
+python-dotenv>=1.0

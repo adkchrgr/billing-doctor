@@ -8,7 +8,7 @@ import { investigate } from "./agent/loop.ts";
 import { createHooks, denyAll, type Approver } from "./agent/hooks.ts";
 import { recordUsage, toUsageEvent } from "./metering/meter.ts";
 import type { Diagnosis } from "./agent/diagnosis.ts";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 interface RunReport { id: string; stop?: string; turns?: number; tokens?: number; cache_read?: number; tool_calls: number; duplicate_calls?: number; blocked_calls?: number; override?: boolean }
 
@@ -21,7 +21,8 @@ Usage:
   billing-doctor eval    [--agent] [--label name]  Score every scenario; saves runs/eval-*.json for comparison
 
 Live account (instead of --scenario): --live --customer <id> --txn id1,id2 --subject "..." --body "..."
-  (needs METRONOME_API_KEY; use a sandbox key)`;
+  or:                           --live --txn-file demo-app/last_run.json
+  (needs METRONOME_API_KEY; use a sandbox key. METRONOME_BASE_URL=http://localhost:4010 targets the fake server)`;
 
 const args = process.argv.slice(2);
 const cmd = args[0];
@@ -38,13 +39,19 @@ const cliApprover: Approver = async (tool, input) => {
 
 function loadCase() {
   if (flag("live")) {
-    const mc = new HttpMetronomeClient(process.env.METRONOME_API_KEY ?? "");
+    const local = /^http:\/\/(localhost|127\.0\.0\.1)/.test(process.env.METRONOME_BASE_URL ?? "");
+    const mc = new HttpMetronomeClient(process.env.METRONOME_API_KEY ?? (local ? "local-dev-token" : ""));
+    // --txn-file: a run report from the Python demo app (demo-app/last_run.json)
+    const run = opt("txn-file") ? JSON.parse(readFileSync(opt("txn-file")!, "utf8")) : {};
     const ticket = {
-      subject: opt("subject") ?? "(no subject)",
-      body: opt("body") ?? "",
-      customer_id: opt("customer") ?? "",
-      transaction_ids: (opt("txn") ?? "").split(",").filter(Boolean),
+      subject: opt("subject") ?? run.ticket_subject ?? "(no subject)",
+      body: (opt("body") ?? run.ticket_body ?? "") +
+        (run.ingest_errors?.length ? `\n\nOur sender logged these ingest errors:\n${run.ingest_errors.join("\n")}` : ""),
+      customer_id: opt("customer") ?? run.customer_id ?? "",
+      transaction_ids: opt("txn") ? opt("txn")!.split(",").filter(Boolean) : (run.transaction_ids ?? []).slice(0, 100),
+      ...(run.invoice ? { invoice: run.invoice } : {}),
     };
+    if (!ticket.customer_id) throw new Error("--live needs --customer <metronome customer id> (or a --txn-file that includes customer_id)");
     return { mc: mc as MetronomeClient, ticket, now: new Date(), planted: undefined, id: "live" };
   }
   const s = getScenario(opt("scenario") ?? "");

@@ -24,7 +24,7 @@ npm install
 npm run doctor -- scenarios                          # list sandbox scenarios with planted bugs
 npm run doctor -- triage --scenario region-case      # offline, deterministic, no keys needed
 npm run doctor -- eval                               # score all scenarios (10/10)
-npm test                                             # 26 tests, including the agent loop with a scripted model
+npm test                                             # 27 tests, including the agent loop with a scripted model
 
 # Claude agent mode (needs ANTHROPIC_API_KEY)
 npm run doctor -- agent --scenario reused-txn-id
@@ -33,6 +33,16 @@ npm run doctor -- eval --agent
 # Live Metronome account (use a SANDBOX key)
 METRONOME_API_KEY=... npm run doctor -- triage --live --customer <id> --txn t1,t2 --subject "..."
 ```
+
+### Full loop: a real app sending usage → Billing Doctor
+`demo-app/` is a small Python product ("Acme AI") that sends usage with the official Metronome SDK. It has switchable integration bugs. Run it against the bundled fake Metronome server (`npm run fake-metronome`) or a real sandbox, then point Billing Doctor at the run:
+
+```bash
+npm run fake-metronome                                   # terminal 1
+cd demo-app && python app.py send --calls 20 --bug wrong-alias && cd ..
+METRONOME_BASE_URL=http://localhost:4010 npm run doctor -- triage --live --txn-file demo-app/last_run.json
+```
+See [demo-app/README.md](demo-app/README.md).
 
 ### Use it from Claude Code on a subscription (no API key)
 `.mcp.json` registers the MCP server. Open this folder in Claude Code and ask:
@@ -53,7 +63,9 @@ ticket ──► agent loop (src/agent/loop.ts) ──► Claude
          checks (src/checks/*)  ── deterministic diagnostics (also used offline)
                                    findings.ts: events & invoices · pricing.ts: rebuilds price from contract + rate card
               ▼
-         MetronomeClient ── HttpMetronomeClient (live) | MockMetronomeClient (scenarios)
+         MetronomeClient ── HttpMetronomeClient (live / fake server) | MockMetronomeClient (scenarios)
+
+demo-app (Python, metronome-sdk) ──usage──► fake-server.ts (localhost:4010) or real sandbox
               
          submit_diagnosis ── schema-validated structured output ── stop
               ▼

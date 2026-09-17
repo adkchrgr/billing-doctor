@@ -34,7 +34,12 @@ Milestones follow the CCAR-F course order, so each one exercises what you just l
 - Add: a PII redaction hook on tool results, an append-only audit log of every tool call, and a per-tenant rate limit
 - Mirror the policy as Claude Code hooks (`PreToolUse`) for the MCP path
 
-## M6 — Real Metronome sandbox
+## M6 — Real Metronome sandbox (local half ✅)
+- ✅ `demo-app/`: Python product sending usage via `metronome-sdk`, with 9 switchable bugs and a `setup_sandbox.py`
+- ✅ `src/fake-server.ts`: local Metronome API on the SDK's paths and payloads, with a live DRAFT invoice built from ingested events
+- ✅ Building against the SDK caught a real mismatch: the API returns `aggregation_type` in UPPERCASE (now normalized)
+- ⬜ Get real sandbox access, run `setup_sandbox.py`, and repeat the bug runs live
+
 1. Create a Metronome sandbox account
 2. Recreate the scenarios live: two customers, the two billable metrics, then send the broken events with a script
 3. Run `triage --live` and `agent --live` against them

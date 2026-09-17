@@ -18,7 +18,12 @@ export interface MetronomeClient {
   getRates(rateCardId: string, at: string, productId?: string): Promise<RateSchedule[]>;
 }
 
-const BASE_URL = "https://api.metronome.com";
+const BASE_URL = process.env.METRONOME_BASE_URL ?? "https://api.metronome.com";
+
+/** The API returns aggregation_type in UPPERCASE (COUNT, SUM…); our checks use lowercase. */
+function normalizeMetric<T extends { aggregation_type?: string }>(m: T): T {
+  return m.aggregation_type ? { ...m, aggregation_type: m.aggregation_type.toLowerCase() } : m;
+}
 
 export class MetronomeApiError extends Error {
   constructor(public status: number, public path: string, body: string) {
@@ -65,14 +70,17 @@ export class HttpMetronomeClient implements MetronomeClient {
   listCustomers() {
     return this.paginate<Customer>("/v1/customers?limit=100");
   }
-  listBillableMetrics() {
-    return this.paginate<BillableMetric>("/v1/billable-metrics?limit=100");
+  async listBillableMetrics() {
+    return (await this.paginate<BillableMetric>("/v1/billable-metrics?limit=100")).map(normalizeMetric);
   }
   async getBillableMetric(id: string) {
-    return (await this.req<{ data: BillableMetric }>("GET", `/v1/billable-metrics/${encodeURIComponent(id)}`))?.data ?? null;
+    const m = (await this.req<{ data: BillableMetric }>("GET", `/v1/billable-metrics/${encodeURIComponent(id)}`))?.data;
+    return m ? normalizeMetric(m) : null;
   }
   async searchEvents(transactionIds: string[]) {
-    return (await this.req<SearchedEvent[]>("POST", "/v1/events/search", { transactionIds })) ?? [];
+    // Wire format is camelCase (the official SDK maps transaction_ids → transactionIds)
+    const events = (await this.req<SearchedEvent[]>("POST", "/v1/events/search", { transactionIds })) ?? [];
+    return events.map((e) => ({ ...e, matched_billable_metrics: e.matched_billable_metrics?.map(normalizeMetric) }));
   }
   listInvoices(customerId: string, opts: { status?: Invoice["status"] } = {}) {
     const q = opts.status ? `&status=${opts.status}` : "";

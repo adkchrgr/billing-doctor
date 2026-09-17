@@ -25,7 +25,7 @@ export interface Scenario {
 const NOW = "2026-09-15T12:00:00Z";
 const T = (d: number) => new Date(Date.parse(NOW) - d * 86_400_000).toISOString();
 
-function baseWorld(events: UsageEvent[], overrides: Partial<MockWorld> = {}): MockWorld {
+export function baseWorld(events: UsageEvent[], overrides: Partial<MockWorld> = {}): MockWorld {
   return {
     customers: [
       { id: "cust_acme", name: "Acme Robotics", external_id: "acme-prod", ingest_aliases: ["acme-123"] },
@@ -62,7 +62,7 @@ function baseWorld(events: UsageEvent[], overrides: Partial<MockWorld> = {}): Mo
   };
 }
 
-const acmeContract = (overrides: NonNullable<MockWorld["contracts"]>[number]["overrides"]) =>
+export const acmeContract = (overrides: NonNullable<MockWorld["contracts"]>[number]["overrides"]) =>
   [{ id: "con_acme_2026", customer_id: "cust_acme", rate_card_id: "rc_standard", starting_at: "2026-01-01T00:00:00Z", overrides }];
 
 const ev = (id: string, customer_id: string, event_type: string, timestamp: string, properties?: Record<string, unknown>): UsageEvent =>

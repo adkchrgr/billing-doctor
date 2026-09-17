@@ -1,3 +1,7 @@
 node_modules/
 .env
 runs/
+demo-app/.venv/
+demo-app/.env
+demo-app/last_run.json
+__pycache__/

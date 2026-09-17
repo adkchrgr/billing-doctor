@@ -128,7 +128,11 @@ export function checkEvents(
       if (!fail) continue;
       const isAggKey = fail.filter === m.aggregation_key && fail.reason === "missing";
       if (isAggKey) {
-        const hint = closest(fail.filter, Object.keys(ev.properties ?? {}), 6);
+        const keys = Object.keys(ev.properties ?? {});
+        const k = fail.filter.toLowerCase();
+        // Prefer renames that contain the key ("tokens" → "token_count"), then fall back to edit distance.
+        const hint = keys.find((x) => x.toLowerCase().includes(k) || k.includes(x.toLowerCase()) || x.toLowerCase().startsWith(k.replace(/s$/, "")))
+          ?? closest(fail.filter, keys, 3);
         findings.push({
           code: "AGGREGATION_KEY_INVALID", severity: "high",
           summary: `Metric "${m.name}" aggregates on "${fail.filter}", but the event has no such property` + (hint ? ` (it sends "${hint}").` : "."),
@@ -161,21 +165,37 @@ function describe(f: ReturnType<typeof failingPropertyFilter> & object): string 
   }
 }
 
-/** Collapse identical findings across many events into one with a count. */
+/** Same root cause across many events → one finding. Values that vary per event don't split it. */
+function dedupeKey(f: Finding): string {
+  const e = f.evidence;
+  switch (f.code) {
+    case "DUPLICATE_TRANSACTION_ID":
+      return f.code;
+    case "AGGREGATION_KEY_INVALID":
+      return `${f.code}|${e.metric_id}|${"value" in e ? "type" : "missing"}`;
+    case "TIMESTAMP_INVALID":
+      return `${f.code}|${e.age_days === undefined ? "format" : Number(e.age_days) > 0 ? "old" : "future"}`;
+    default:
+      return `${f.code}|${f.summary}`;
+  }
+}
+
 function dedupe(findings: Finding[]): Finding[] {
-  const map = new Map<string, Finding & { evidence: Record<string, unknown> }>();
+  const map = new Map<string, Finding>();
   for (const f of findings) {
-    const key = f.code + "|" + f.summary;
+    const key = dedupeKey(f);
     const existing = map.get(key);
     if (existing) {
-      const ids = (existing.evidence.transaction_ids as string[]);
-      ids.push(String(f.evidence.transaction_id));
+      (existing.evidence.transaction_ids as string[]).push(String(f.evidence.transaction_id));
     } else {
       const { transaction_id, ...rest } = f.evidence;
       map.set(key, { ...f, evidence: { ...rest, transaction_ids: [String(transaction_id)] } });
     }
   }
-  return [...map.values()];
+  return [...map.values()].map((f) => {
+    const n = (f.evidence.transaction_ids as string[]).length;
+    return n > 1 ? { ...f, summary: `${f.summary} (${n} events affected; example shown)` } : f;
+  });
 }
 
 export interface InvoiceExpectation {
