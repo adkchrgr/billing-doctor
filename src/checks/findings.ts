@@ -36,7 +36,7 @@ export function checkMissingEvents(requested: string[], found: { transaction_id:
   return [{
     code: "EVENTS_NOT_FOUND", severity: "high",
     summary: all
-      ? `None of the ${missing.length} transaction IDs shared were received by Metronome.`
+      ? (missing.length === 1 ? "The transaction ID shared was never received by Metronome." : `None of the ${missing.length} transaction IDs shared were received by Metronome.`)
       : `${missing.length} of ${new Set(requested).size} transaction IDs shared were never received by Metronome.`,
     fix: "Check the sender's logs for ingest errors, confirm the API key and base URL point at the right Metronome environment, and confirm the events are less than 34 days old (search only covers that window).",
     evidence: { missing_transaction_ids: missing.slice(0, 20), missing_count: missing.length },

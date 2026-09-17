@@ -3,6 +3,14 @@
     "billing-doctor": {
       "command": "npx",
       "args": ["tsx", "src/mcp-server.ts"],
+      "env": {
+        "METRONOME_BASE_URL": "http://localhost:4010",
+        "METRONOME_API_KEY": "local-dev-token"
+      }
+    },
+    "billing-doctor-scenario": {
+      "command": "npx",
+      "args": ["tsx", "src/mcp-server.ts"],
       "env": { "BD_SCENARIO": "region-case" }
     }
   }
