@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "billing-doctor": {
+      "command": "npx",
+      "args": ["tsx", "src/mcp-server.ts"],
+      "env": { "BD_SCENARIO": "region-case" }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "billing-doctor",
+  "version": "0.1.0",
+  "description": "AI agent that diagnoses Metronome usage-billing integration issues — and meters itself with Metronome.",
+  "type": "module",
+  "bin": {
+    "billing-doctor": "src/cli.ts"
+  },
+  "scripts": {
+    "doctor": "tsx src/cli.ts",
+    "mcp": "tsx src/mcp-server.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.126.0",
+    "@modelcontextprotocol/sdk": "^1.30.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
