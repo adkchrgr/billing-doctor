@@ -1,6 +1,6 @@
 import type { MetronomeClient } from "../metronome/client.ts";
 import type { UsageEvent } from "../metronome/types.ts";
-import { checkEvents, checkInvoice } from "../checks/findings.ts";
+import { checkEvents, checkInvoice, checkMissingEvents } from "../checks/findings.ts";
 import { diagnosisSchema } from "./diagnosis.ts";
 import { lookupAndExplainPrice } from "../checks/pricing.ts";
 
@@ -50,8 +50,7 @@ export function buildTools(mc: MetronomeClient, now: Date): ToolDef[] {
         const [events, customers, metrics] = await Promise.all([
           mc.searchEvents(transaction_ids), mc.listCustomers(), mc.listBillableMetrics(),
         ]);
-        if (events.length === 0) return { findings: [], note: "No events found for those transaction IDs — they may never have been sent." };
-        return { findings: checkEvents(events, customers, metrics, now) };
+        return { findings: [...checkMissingEvents(transaction_ids, events), ...checkEvents(events, customers, metrics, now)] };
       },
     },
     {

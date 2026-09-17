@@ -1,6 +1,6 @@
 import type { Scenario } from "../scenarios/index.ts";
 import type { MetronomeClient } from "../metronome/client.ts";
-import { checkEvents, checkInvoice, type Finding } from "../checks/findings.ts";
+import { checkEvents, checkInvoice, checkMissingEvents, type Finding } from "../checks/findings.ts";
 import { diagnosisFromFindings, type Diagnosis } from "./diagnosis.ts";
 import { lookupAndExplainPrice } from "../checks/pricing.ts";
 
@@ -16,6 +16,7 @@ export async function triageOffline(ticket: Scenario["ticket"], mc: MetronomeCli
     const [events, customers, metrics] = await Promise.all([
       mc.searchEvents(ticket.transaction_ids), mc.listCustomers(), mc.listBillableMetrics(),
     ]);
+    findings.push(...checkMissingEvents(ticket.transaction_ids, events));
     findings.push(...checkEvents(events, customers, metrics, now));
   }
   if (ticket.invoice) {

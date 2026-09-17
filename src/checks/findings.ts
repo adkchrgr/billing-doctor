@@ -10,6 +10,7 @@ export type FindingCode =
   | "TIMESTAMP_INVALID"
   | "INVOICE_PRICE_MISMATCH"
   | "INVOICE_QUANTITY_MISMATCH"
+  | "EVENTS_NOT_FOUND"
   | "PRICING_OVERRIDE_DATE_MISMATCH"
   | "PRICING_OVERRIDE_MISSING"
   | "PRICING_NO_CONTRACT"
@@ -25,6 +26,22 @@ export interface Finding {
 
 const BACKDATE_DAYS = 34; // Metronome ingest backdating + dedupe window
 const RFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+
+/** Transaction IDs the customer shared that Metronome has no record of. */
+export function checkMissingEvents(requested: string[], found: { transaction_id: string }[]): Finding[] {
+  const have = new Set(found.map((e) => e.transaction_id));
+  const missing = [...new Set(requested)].filter((id) => !have.has(id));
+  if (missing.length === 0) return [];
+  const all = missing.length === new Set(requested).size;
+  return [{
+    code: "EVENTS_NOT_FOUND", severity: "high",
+    summary: all
+      ? `None of the ${missing.length} transaction IDs shared were received by Metronome.`
+      : `${missing.length} of ${new Set(requested).size} transaction IDs shared were never received by Metronome.`,
+    fix: "Check the sender's logs for ingest errors, confirm the API key and base URL point at the right Metronome environment, and confirm the events are less than 34 days old (search only covers that window).",
+    evidence: { missing_transaction_ids: missing.slice(0, 20), missing_count: missing.length },
+  }];
+}
 
 /** Checks that only need the searched events + account config. */
 export function checkEvents(

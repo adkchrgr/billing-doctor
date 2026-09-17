@@ -34,3 +34,12 @@ test("metering event is idempotent per run and carries token totals", () => {
   assert.equal(e.properties?.total_tokens, 150);
   assert.equal(e.event_type, "billing_doctor_investigation");
 });
+
+test("transaction IDs Metronome never received are reported, not treated as healthy", async () => {
+  const s = scenarios.find((x) => x.id === "healthy")!;
+  const ticket = { ...s.ticket, transaction_ids: ["h1", "never-sent-1", "never-sent-2"] };
+  const { findings, diagnosis } = await triageOffline(ticket, new MockMetronomeClient(s.world), new Date(s.now));
+  assert.deepEqual(findings.map((f) => f.code), ["EVENTS_NOT_FOUND"]);
+  assert.match(findings[0]!.summary, /2 of 3/);
+  assert.equal(diagnosis.status, "root_cause_found");
+});
