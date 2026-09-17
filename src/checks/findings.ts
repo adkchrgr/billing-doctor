@@ -209,10 +209,10 @@ function dedupe(findings: Finding[]): Finding[] {
       map.set(key, { ...f, evidence: { ...rest, transaction_ids: [String(transaction_id)] } });
     }
   }
-  return [...map.values()].map((f) => {
-    const n = (f.evidence.transaction_ids as string[]).length;
-    return n > 1 ? { ...f, summary: `${f.summary} (${n} events affected; example shown)` } : f;
-  });
+  return [...map.values()].map((f) => ({
+    ...f,
+    evidence: { ...f.evidence, affected_events: (f.evidence.transaction_ids as string[]).length },
+  }));
 }
 
 export interface InvoiceExpectation {

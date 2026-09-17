@@ -101,7 +101,11 @@ export function explainPrice(
       fix: late
         ? `Move override ${misdated.id} to start ${day(at)} (or the negotiated date), then regenerate or credit the affected invoice.`
         : `Extend override ${misdated.id}'s end date if the discount should still apply, then credit the affected invoice.`,
-      evidence: { invoice_id: invoice.id, override_id: misdated.id, override_starting_at: misdated.starting_at, override_ending_before: misdated.ending_before, period_start: at },
+      evidence: {
+        invoice_id: invoice.id, override_id: misdated.id, override_starting_at: misdated.starting_at,
+        override_ending_before: misdated.ending_before, period_start: at,
+        line_item: lineItemName, expected_price: expectedPrice, list_price: list, starts_late: late,
+      },
     });
     return { breakdown, findings };
   }
@@ -112,7 +116,7 @@ export function explainPrice(
       code: "PRICING_OVERRIDE_MISSING", severity: "high",
       summary: `Contract ${contract.id} has no override for "${lineItemName}", so the rate card list price ${list} was billed instead of the quoted ${expectedPrice}.`,
       fix: `If ${expectedPrice} was agreed, add an OVERWRITE override for product ${li.product_id} on the contract (check the signed order form first), then credit the difference.`,
-      evidence: { invoice_id: invoice.id, contract_id: contract.id, rate_card_id: contract.rate_card_id, list_price: list },
+      evidence: { invoice_id: invoice.id, contract_id: contract.id, rate_card_id: contract.rate_card_id, list_price: list, line_item: lineItemName, expected_price: expectedPrice },
     });
     return { breakdown, findings };
   }

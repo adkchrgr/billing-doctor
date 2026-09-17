@@ -43,3 +43,26 @@ test("transaction IDs Metronome never received are reported, not treated as heal
   assert.match(findings[0]!.summary, /2 of 3/);
   assert.equal(diagnosis.status, "root_cause_found");
 });
+
+test("customer reply is written for the customer, not the engineer", async () => {
+  const s = scenarios.find((x) => x.id === "wrong-agg-key")!;
+  const world = structuredClone(s.world);
+  world.events.push({ ...world.events[0]!, transaction_id: "ak2" });
+  const { diagnosis } = await triageOffline({ ...s.ticket, transaction_ids: ["ak1", "ak2"] }, new MockMetronomeClient(world), new Date(s.now));
+  const reply = diagnosis.customer_reply;
+  assert.match(reply, /This affected 2 of the events you shared/);
+  assert.match(reply, /How to fix:/);
+  assert.doesNotMatch(reply, /emitter|example shown|\[\d+ events\]/);
+  assert.match(diagnosis.root_causes[0]!.summary, /\[2 events\]/, "engineers still see the count");
+});
+
+test("pricing reply explains the cause without the internal symptom line or event advice", async () => {
+  const s = scenarios.find((x) => x.id === "price-override")!;
+  const { diagnosis } = await triageOffline(s.ticket, new MockMetronomeClient(s.world), new Date(s.now));
+  const reply = diagnosis.customer_reply;
+  assert.match(reply, /set to start on 2026-09-01 instead of 2026-08-01/);
+  assert.match(reply, /Next step: We're correcting the dates/);
+  assert.doesNotMatch(reply, /override/i);
+  assert.doesNotMatch(reply, /See the pricing root cause|re-sent|transaction IDs/);
+  assert.equal(diagnosis.root_causes.length, 2, "engineers still get both findings");
+});
